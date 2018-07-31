@@ -1,0 +1,88 @@
+---
+title: "Regression"
+author: "Mathew James Athoopallil"
+output: html_notebook
+---
+
+
+
+```{r}
+library(corrplot)
+
+# Loading the data
+setwd("D:/Github/NBA/NBA_Regression")
+
+nbadf <- read.csv("nba.csv",stringsAsFactors = F, sep = ',')
+
+
+```
+
+```{r}
+# Identifying columns with missing values
+
+colnames(nbadf)[colSums(is.na(nbadf))>0] 
+
+#Can be modified with respect to missing value character ---- colnames(nbadf)[colSums(nbadf == "?")>0] ----- is missing values were marked as '?'
+
+
+```
+
+```{r}
+
+# Checking the correlation between numeric variables
+
+corrplot(round(cor(nbadf[,-1*c(1:7)]),2), method = "number")
+
+
+```
+
+```{r}
+# Splitting data into test and train
+
+set.seed(1122)
+index <- sample(1:nrow(nbadf),250)
+train <- nbadf[index,]
+test <- nbadf[-index,]
+
+# Performing regression
+multiv_train <- lm(formula = PTS ~ FG + MIN + FT + TOT, data = train)
+summary(multiv_train)
+cat("Based on the R-squared value the regressors chosen are good. The F-Statistic is > 1 which is also good.")
+```
+
+```{r}
+# Checking the residuals
+
+plot(multiv_train,1)
+
+cat("The residual are more or less centered around the line y = 0, i.e. variance is low")
+```
+
+```{r}
+hist(multiv_train$residuals, xlab = "Model Residuals", 
+     main="NBA Residual Histogram MultiVariate")
+
+cat("We see that the plot of the histogram is approximately normally distributed with a slight right skew.")
+```
+
+```{r}
+# Prediction
+
+multiv_test <- predict(multiv_train, test[, c('FG','MIN','FT','TOT')])
+```
+
+```{r}
+#Calculating RSE and R^2 value
+
+result <- data.frame(test$PTS,multiv_test)
+result <- data.frame(result,(result$test.PTS-result$multiv_test))
+colnames(result) <- c("Actual", "Predicted", "Error")
+
+RSS <- sum((result$Error)^2)
+TSS <- sum((result$Actual-mean(result$Actual))^2)
+RSE <- sqrt(RSS/(length(result$Actual)-4-1)) # here 4 is the number of variables
+FStat <- ((TSS-RSS)/4)/(RSS/(length(result$Actual)-4-1))
+
+R_squared <- 1 - (RSS/TSS)
+```
+
